@@ -37,8 +37,8 @@ ui <- fluidPage(
     tabPanel("display_page",
       fluidRow(
         column(width = 1,
-          h2("Varwolf",
-            style = "display:flex; justify-content:center"
+          h2(textOutput("name"),
+            style = "display:flex; justify-content:center; font-weight: bold;"
           )
         ),
         column(width = 2,
@@ -47,11 +47,38 @@ ui <- fluidPage(
             accept = ".xlsx"
           )
         ),
-        column(width = 1, offset = 8, br(),
+        column(width = 2, br(),
+               selectInput("acmg",
+                            "",
+                            c("All" = "all",
+                              "Benign" = "Benign", 
+                              "Likely benign" = "Likely Benign",
+                              "VUS" = "Uncertain significance",
+                              "Likely pathogenic" = "Likely pathogenic",
+                              "Pathogenic" = "Pathogenic"
+                            ),
+                            selected = "all",
+               ),
+               style = "display:flex;
+                  justify-content:start;",
+        ),
+        column(width = 2, offset = 4,
+               radioButtons("filter",
+                            "Show filtered variants:",
+                            c("Off " = "off", "On " = "on"),
+                            selected = "off",
+                            inline = TRUE
+               ),
+               style = "display:flex;
+                       justify-content:end;
+                       align-items:center;
+                       height:10vh;"
+        ),
+        column(width = 1, br(),
           div(
             actionButton("reset", "Reset"),
             style = "display:flex; 
-                      justify-content:end"
+                      justify-content:center"
           )
         )
       ),
@@ -64,7 +91,7 @@ ui <- fluidPage(
       )
     )
   ),
-
+  
 #################-CSS-##################
 
   theme = bs_theme(bg = "hsl(210, 60%, 15%)",
@@ -138,12 +165,15 @@ server <- function(input, output) {
 
   table <- reactiveVal()
   tablereset <- reactiveVal()
+  avcf_u <- reactiveVal()
 
   avcf <- reactive(read.csv(input$upload$datapath,
                             sep = "\t",
                             colClasses = "character")
   )
-
+  
+  output$name <- renderText(tools::file_path_sans_ext(input$upload$name))
+  
   observeEvent(input$upload, {
     updateTabsetPanel(inputId = "display", selected = "display_page")
     avcf <- avcf() %>% unite("Position", c("Chromosome", "Position"),
@@ -190,7 +220,13 @@ server <- function(input, output) {
   
   output$table <- renderReactable({
     reactable(
-      table(),
+      if (input$acmg == "all") {
+        if (input$filter == "off") {table()[table()$Filter == "PASS", ]}
+        else {table()}
+      } else {
+        if (input$filter == "off") {table()[table()$Filter == "PASS" & table()$ACMG.pred == input$acmg, ]}
+        else {table()[table()$ACMG.pred == input$acmg, ]}
+      },
       height = "90vh",
       theme = reactableTheme(
         backgroundColor = "hsl(210,60%,15%)",
@@ -224,24 +260,18 @@ server <- function(input, output) {
         Position = colDef(
           name="Position",
           sticky="left",
-          style = function(value, index) {
-            if (table()$Filter[index] != "PASS") {
-              list(backgroundColor = "hsl(0, 40%, 20%)")
-            } else {
-              list(backgroundColor = "hsl(210, 60%, 15%)")
-            }
-          }
+          style = list(backgroundColor = "hsl(210, 60%, 15%)")
         ),
         dbSNP.ID = colDef(
           name = "dbSNP ID",
           sticky="left",
-          style = function(value, index) {
-            if (table()$Filter[index] != "PASS") {
-              list(backgroundColor = "hsl(0, 40%, 20%)")
-            } else {
-              list(backgroundColor = "hsl(210, 60%, 15%)")
-            }
-          }
+          style = list(backgroundColor = "hsl(210, 60%, 15%)")
+        ),
+        Genotype..ref.depth..alt.depth = colDef(
+          header=with_tooltip("GT: RDP, ADP", "Genotype: Ref depth, Alt depth"),
+          minWidth = 145,
+          sticky="left",
+          style = list(backgroundColor = "hsl(210, 60%, 15%)")
         ),
         Ref = colDef(
           name="Ref",
@@ -265,49 +295,19 @@ server <- function(input, output) {
           name="VCF Info",
           show = FALSE
         ),
-        Genotype..ref.depth..alt.depth = colDef(
-          header=with_tooltip("GT: RDP, ADP", "Genotype: Ref depth, Alt depth"),
-          minWidth = 145,
-          sticky="left",
-          style = function(value, index) {
-            if (table()$Filter[index] != "PASS") {
-              list(backgroundColor = "hsl(0, 40%, 20%)")
-            } else {
-              list(backgroundColor = "hsl(210, 60%, 15%)")
-            }
-          }
-        ),
         Gene = colDef(
           name = "Gene",
-          style = function(value, index) {
-            if (table()$Filter[index] != "PASS") {
-              list(backgroundColor = "hsl(0, 40%, 20%)")
-            } else {
-              list(backgroundColor = "hsl(210, 60%, 12.5%)")
-            }
-          }
+          style = list(backgroundColor = "hsl(210, 60%, 12.5%)")
         ),
         OMIM = colDef(
           name = "OMIM",
           minWidth = 200,
-          style = function(value, index) {
-            if (table()$Filter[index] != "PASS") {
-              list(backgroundColor = "hsl(0, 40%, 20%)")
-            } else {
-              list(backgroundColor = "hsl(210, 60%, 12.5%)")
-            }
-          }
+          style = list(backgroundColor = "hsl(210, 60%, 12.5%)")
         ),
         Orphanet = colDef(
           name = "Orphanet",
           minWidth = 200,
-          style = function(value, index) {
-            if (table()$Filter[index] != "PASS") {
-              list(backgroundColor = "hsl(0, 40%, 20%)")
-            } else {
-              list(backgroundColor = "hsl(210, 60%, 12.5%)")
-            }
-          }
+          style =  list(backgroundColor = "hsl(210, 60%, 12.5%)")
         ),
         EXON = colDef(
           name = "Exon"
@@ -316,12 +316,7 @@ server <- function(input, output) {
           name = "Intron"
         ),
         Consequence = colDef(
-          name = "Class",
-          cell = function(value) {
-            value <- str_replace_all(value, "_", " ")
-            value <- str_replace_all(value, "&", ", ")
-            div(value)
-          }
+          name = "Class"
         ),
         IMPACT = colDef(
           name="Impact",
@@ -347,11 +342,6 @@ server <- function(input, output) {
         ),
         BIOTYPE = colDef(
           name = "Consequence",
-          cell = function(value) {
-            value <- str_replace_all(value, "_", " ")
-            value <- str_replace_all(value, "&", ", ")
-            div(value)
-          },
           minWidth = 145
         ),
         AF = colDef(
@@ -402,20 +392,6 @@ server <- function(input, output) {
         PUBMED = colDef(
           show = FALSE
         ),
-        SIFT = colDef(
-          cell = function(value) {
-            value <- str_replace_all(value, "_", " ")
-            value <- str_replace_all(value, "\\(", " \\(")
-            div(value)
-          }
-        ),
-        Polyphen = colDef(
-          cell = function(value) {
-            value <- str_replace_all(value, "_", " ")
-            value <- str_replace_all(value, "\\(", " \\(")
-            div(value)
-          }
-        ),
         CADD_Phred = colDef(
           show = FALSE
         ),
@@ -447,69 +423,33 @@ server <- function(input, output) {
         ),
         clinvar_clnsig = colDef(
           name = "ClinVar",
-          style = function(value, index) {
-            if (table()$Filter[index] != "PASS") {
-              list(backgroundColor = "hsl(0, 40%, 20%)")
-            } else {
-              list(backgroundColor = "hsl(210, 60%, 12.5%)")
-            }
-          }
+          style = list(backgroundColor = "hsl(210, 60%, 12.5%)")
         ),
         clinvar_hgvs = colDef(
           name = "CV Name",
-          style = function(value, index) {
-            if (table()$Filter[index] != "PASS") {
-              list(backgroundColor = "hsl(0, 40%, 20%)")
-            } else {
-              list(backgroundColor = "hsl(210, 60%, 12.5%)")
-            }
-          }
+          style = list(backgroundColor = "hsl(210, 60%, 12.5%)")
         ),
         clinvar_review = colDef(
           name = "CV Submitters",
           minWidth = 160,
-          style = function(value, index) {
-            if (table()$Filter[index] != "PASS") {
-              list(backgroundColor = "hsl(0, 40%, 20%)")
-            } else {
-              list(backgroundColor = "hsl(210, 60%, 12.5%)")
-            }
-          }
+          style = list(backgroundColor = "hsl(210, 60%, 12.5%)")
         ),
         clinvar_trait = colDef(
           name = "CV Phenotype",
           minWidth = 160,
-          style = function(value, index) {
-            if (table()$Filter[index] != "PASS") {
-              list(backgroundColor = "hsl(0, 40%, 20%)")
-            } else {
-              list(backgroundColor = "hsl(210, 60%, 12.5%)")
-            }
-          }
+          style = list(backgroundColor = "hsl(210, 60%, 12.5%)")
         ),
         clinvar_var_source = colDef(
           show = FALSE
         ),
         GWAS = colDef(
           minWidth = 150,
-          style = function(value, index) {
-            if (table()$Filter[index] != "PASS") {
-              list(backgroundColor = "hsl(0, 40%, 20%)")
-            } else {
-              list(backgroundColor = "hsl(210, 60%, 12.5%)")
-            }
-          }
+          style =  list(backgroundColor = "hsl(210, 60%, 12.5%)")
         ),
         ACMG.pred = colDef(
           name = "ACMG",
           sticky="right",
-          style = function(value, index) {
-            if (table()$Filter[index] != "PASS") {
-              list(backgroundColor = "hsl(0, 40%, 20%)")
-            } else {
-              list(backgroundColor = "hsl(210, 60%, 15%)")
-            }
-          },
+          style = list(backgroundColor = "hsl(210, 60%, 15%)"),
           cell = function(value) {
             class <- paste0("tag2 status-",
                             tolower(str_replace_all(value, " ", "-")))
@@ -519,7 +459,7 @@ server <- function(input, output) {
         Scores = colDef(
           show = FALSE
         )
-      )
+      ) 
     )
   })
 }
