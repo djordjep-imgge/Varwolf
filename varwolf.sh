@@ -1,8 +1,8 @@
 #!/bin/bash
 #
-# Usage: ./seq2freq.sh <sample name>
+# Usage: ./varwolfa.sh <sample name>
 #
-# Prerequisites packages: fastp, bwa-mem, samtools, docker, GATK image, ANNOVAR.
+# Prerequisites packages: fastp, bwa-mem, samtools, docker, GATK image, ANNOVAR, InterVar
 
 set -uex
 
@@ -121,9 +121,9 @@ docker run -v ~/Genomics:/data vep \
 
 bcftools view -H tables/${NAME}_VEP_OMIM.vcf | tr "|" "\t" > tables/${NAME}_VEP_OMIM_tabbed.txt
 
-bcftools view -H vcfs/${NAME}_norm.vcf | cut -f 10 | cut -d ":" -f 1,2 | tr "/" "x" | sed 's/0x1/het/' | sed 's/1x0/het/' | sed 's/1x1/hom/' > vcfs/${NAME}_genotype.txt
+bcftools view -H vcfs/${NAME}_norm.vcf | cut -f 10 | cut -d ":" -f 1,2 | tr "/" "x" | sed 's/0x1/het/' | sed 's/1x0/het/' | sed 's/1x1/hom/' > tables/${NAME}_genotype.txt
 
-paste <(cut -f 1-8 tables/${NAME}_VEP_OMIM_tabbed.txt) vcfs/${NAME}_genotype.txt > tables/${NAME}_VEP_vcfinfo.txt
+paste <(cut -f 1-8 tables/${NAME}_VEP_OMIM_tabbed.txt) tables/${NAME}_genotype.txt > tables/${NAME}_VEP_vcfinfo.txt
 
 docker run -v ~/Genomics:/data vep \
 	vep --fork 16 --cache \
@@ -182,7 +182,7 @@ cut -f 14 tables/${NAME}_.hg38_multianno.txt.intervar | tail -n +2 | sed 's/ PVS
 
 paste tables/${NAME}_VEP_vcfinfo.txt tables/${NAME}_VEP_genelv.txt tables/${NAME}_VEP_variantlv.txt tables/${NAME}_VEP_pred.txt tables/${NAME}_VEP_gwas.txt tables/${NAME}_IV.txt > tables/${NAME}_headerless.txt
 
-cat db/headervcf.txt tables/${NAME}_headerless.txt > tables/${NAME}.tsv
+cat db/headervcf.txt tables/${NAME}_headerless.txt > tables/${NAME}.avcf
 
 # Remoivng temporary files
 
