@@ -224,14 +224,14 @@ server <- function(input, output) {
         if (input$filter == "off") {table()[table()$Filter == "PASS", ]}
         else {table()}
       } else {
-        if (input$filter == "off") {table()[table()$Filter == "PASS" & table()$ACMG.pred == input$acmg, ]}
+        if (input$filter == "off") {
+          table()[table()$Filter == "PASS" & table()$ACMG.pred == input$acmg, ]}
         else {table()[table()$ACMG.pred == input$acmg, ]}
       },
       height = "90vh",
       theme = reactableTheme(
         backgroundColor = "hsl(210,60%,15%)",
         borderColor = "hsl(210, 60%, 15%)",
-        highlightColor = "hsl(210, 60%, 15%)",
         inputStyle = list(backgroundColor = "hsl(210, 60%, 20%)"),
         selectStyle = list(backgroundColor = "hsl(210, 60%, 20%)"),
         style = list(color = "white")
@@ -242,14 +242,7 @@ server <- function(input, output) {
       pageSizeOptions = c(10, 100, 1000),
       defaultPageSize = 100,
       searchable = TRUE,
-      highlight = TRUE,
-      rowStyle = function(index) {
-        if (table()[index, "Filter"] != "PASS") {
-          list(background = "hsl(0, 40%, 20%)")
-        } else {
-          list(background = "hsl(210, 60%, 10%)")
-        }
-      },
+      rowStyle = list(background = "hsl(210, 60%, 10%)"),
       defaultColDef = colDef(
         align = "center",
         minWidth = 120,
