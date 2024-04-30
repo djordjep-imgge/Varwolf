@@ -30,18 +30,18 @@ LANES=$(seq 1 $LANE)
 
 for i in $LANES
 do
-    fastp \
+	fastp \
 		-w $((THREADS / 4)) \
-	    -i ${WDIR}/fastq/${SAMPLE}*L00${i}_R1*.fastq.gz \
-        -I ${WDIR}/fastq/${SAMPLE}*L00${i}_R2*.fastq.gz \
-        --stdout \
-    | bwa mem \
+		-i ${WDIR}/fastq/${SAMPLE}*L00${i}_R1*.fastq.gz \
+		-I ${WDIR}/fastq/${SAMPLE}*L00${i}_R2*.fastq.gz \
+		--stdout \
+	| bwa mem \
 		-t ${THREADS} \
 		-M -p -R ${RG} \
-        ${REF} - \
-    | samtools sort \
+		${REF} - \
+	| samtools sort \
 		-@ $((THREADS / 4)) -n \
-        > bams/${SAMPLE}_L${i}.bam
+		> bams/${SAMPLE}_L${i}.bam
 	BAMSHARDS+=$(echo -n "-I ${WDIR}/bams/${SAMPLE}_L${i}.bam ")
 done
 
